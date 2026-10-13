@@ -1,0 +1,15 @@
+{
+  "name": "spark-azure-mcp",
+  "version": "1.0.0",
+  "description": "Azure MCP Server for Google Spark",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "@modelcontextprotocol/sdk": "latest",
+    "@azure/arm-compute": "^22.0.0",
+    "@azure/identity": "^4.0.0"
+  }
+}
