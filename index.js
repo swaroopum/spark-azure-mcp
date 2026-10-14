@@ -3,12 +3,14 @@ const app = express();
 
 app.use(express.json());
 
-// Fix for CORS & Azure Buffering (Very Important)
+// Advanced CORS for Gemini
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
+  const origin = req.headers.origin || "*";
+  res.header("Access-Control-Allow-Origin", origin);
   res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("X-Accel-Buffering", "no"); // This stops Azure from blocking the live connection
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("X-Accel-Buffering", "no");
   
   if (req.method === "OPTIONS") return res.status(200).end();
   next();
@@ -30,7 +32,10 @@ app.get('/sse', async (req, res) => {
       mcpServer = new Server({ name: "spark-azure", version: "1.0.0" }, { capabilities: {} });
     }
     
-    transport = new SSEServerTransport('/messages', res);
+    // IMPORTANT FIX: Give Gemini the FULL URL, not just '/messages'
+    const fullMessagesUrl = `https://${req.headers.host}/messages`;
+    transport = new SSEServerTransport(fullMessagesUrl, res);
+    
     await mcpServer.connect(transport);
   } catch (error) {
     res.status(500).send("Error");
