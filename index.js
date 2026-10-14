@@ -1,16 +1,18 @@
 const express = require('express');
 const app = express();
 
-// Allow all connections
+app.use(express.json());
+
+// Fix for CORS & Azure Buffering (Very Important)
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "*");
-  res.header("Access-Control-Allow-Headers", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("X-Accel-Buffering", "no"); // This stops Azure from blocking the live connection
+  
   if (req.method === "OPTIONS") return res.status(200).end();
   next();
 });
-
-app.use(express.json());
 
 let mcpServer;
 let transport;
@@ -19,7 +21,6 @@ app.get('/', (req, res) => {
   res.send('Server is Running!');
 });
 
-// New Simplified Endpoint
 app.get('/sse', async (req, res) => {
   try {
     const { Server } = await import('@modelcontextprotocol/sdk/server/index.js');
