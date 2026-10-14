@@ -3,7 +3,7 @@ const app = express();
 
 app.use(express.json());
 
-// Advanced CORS for Gemini
+// Advanced CORS
 app.use((req, res, next) => {
   const origin = req.headers.origin || "*";
   res.header("Access-Control-Allow-Origin", origin);
@@ -16,37 +16,53 @@ app.use((req, res, next) => {
   next();
 });
 
-let mcpServer;
-let transport;
-
 app.get('/', (req, res) => {
   res.send('Server is Running!');
 });
+
+// Store multiple connections
+const transports = new Map();
 
 app.get('/sse', async (req, res) => {
   try {
     const { Server } = await import('@modelcontextprotocol/sdk/server/index.js');
     const { SSEServerTransport } = await import('@modelcontextprotocol/sdk/server/sse.js');
     
-    if (!mcpServer) {
-      mcpServer = new Server({ name: "spark-azure", version: "1.0.0" }, { capabilities: {} });
-    }
+    // Create a NEW server instance for every single connection
+    const mcpServer = new Server({ name: "spark-azure", version: "1.0.0" }, { capabilities: {} });
     
-    // IMPORTANT FIX: Give Gemini the FULL URL, not just '/messages'
     const fullMessagesUrl = `https://${req.headers.host}/messages`;
-    transport = new SSEServerTransport(fullMessagesUrl, res);
+    const transport = new SSEServerTransport(fullMessagesUrl, res);
     
     await mcpServer.connect(transport);
+    
+    // Save the connection session
+    transports.set(transport.sessionId, transport);
+    
+    // Remove connection when closed
+    res.on('close', () => {
+      transports.delete(transport.sessionId);
+    });
+
   } catch (error) {
+    console.error("SSE Error:", error);
     res.status(500).send("Error");
   }
 });
 
 app.post('/messages', async (req, res) => {
-  if (transport) {
-    await transport.handlePostMessage(req, res);
-  } else {
-    res.status(400).send("Not connected");
+  try {
+    const sessionId = req.query.sessionId;
+    const transport = transports.get(sessionId);
+    
+    if (transport) {
+      await transport.handlePostMessage(req, res);
+    } else {
+      res.status(404).send("Session not found");
+    }
+  } catch (error) {
+    console.error("Message Error:", error);
+    res.status(500).send("Error");
   }
 });
 
