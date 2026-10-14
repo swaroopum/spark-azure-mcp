@@ -3,6 +3,20 @@ const { DefaultAzureCredential } = require('@azure/identity');
 
 const app = express();
 
+// CORS Permissions for Google Gemini/Spark
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+  next();
+});
+
+// To read messages from Spark
+app.use(express.json());
+
 let mcpServer;
 let transport;
 
@@ -11,7 +25,7 @@ app.get('/', (req, res) => {
   res.send('Azure MCP Server is running perfectly!');
 });
 
-// Official MCP SSE Initialization Endpoint for Google Spark
+// Official MCP SSE Initialization Endpoint
 app.get('/mcp', async (req, res) => {
   try {
     const { Server } = await import('@modelcontextprotocol/sdk/server/index.js');
